@@ -1,0 +1,12 @@
+# MCP SDK (инструменты, JSON Schema, stdio-транспорт)
+mcp>=1.2.0
+
+# По требованию шаблона проекта
+openai>=1.0.0
+fastapi>=0.115.0
+python-multipart>=0.0.9
+python-dotenv>=1.0.0
+uvicorn[standard]>=0.30.0
+
+# sqlite3 входит в стандартную библиотеку Python — pip-пакет не нужен.
+# mcp-spec: отдельный пакет не требуется — схемы инструментов задаёт SDK (mcp).

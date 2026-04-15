@@ -205,3 +205,7 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Локальная БД MCP-сервера товаров
+mcp_server/products.db
+mcp_server/products.db-journal
