@@ -11,7 +11,16 @@ from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
 import db as db_module
-from tools import add_product, calculate, find_product, list_products
+from tools import (
+    add_product,
+    add_to_cart,
+    calculate,
+    clear_cart,
+    find_product,
+    list_products,
+    place_delivery_order,
+    view_cart,
+)
 
 
 def load_env() -> None:
@@ -75,6 +84,38 @@ def calculate_tool(expression: str) -> dict[str, object]:
     """
 
     return calculate(expression)
+
+
+@mcp.tool(name="add_to_cart")
+def add_to_cart_tool(
+    client_id: str,
+    product_id: int,
+    quantity: int = 1,
+) -> dict[str, object]:
+    """Добавить товар в корзину по id из каталога."""
+
+    return add_to_cart(client_id, product_id, quantity)
+
+
+@mcp.tool(name="view_cart")
+def view_cart_tool(client_id: str) -> dict[str, object]:
+    """Показать корзину, сумму товаров, доставку 10% и итог."""
+
+    return view_cart(client_id)
+
+
+@mcp.tool(name="clear_cart")
+def clear_cart_tool(client_id: str) -> dict[str, object]:
+    """Очистить корзину клиента."""
+
+    return clear_cart(client_id)
+
+
+@mcp.tool(name="place_delivery_order")
+def place_delivery_order_tool(client_id: str) -> dict[str, object]:
+    """Оформить доставку: сохранить заказ, показать доставку, очистить корзину."""
+
+    return place_delivery_order(client_id)
 
 
 def main() -> None:

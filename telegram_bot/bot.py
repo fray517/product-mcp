@@ -95,13 +95,100 @@ OPENAI_TOOLS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "add_to_cart",
+            "description": (
+                "Положить товар в корзину по product_id из каталога. "
+                "quantity по умолчанию 1."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "client_id": {
+                        "type": "string",
+                        "description": "Id клиента (дан системой).",
+                    },
+                    "product_id": {"type": "integer", "minimum": 1},
+                    "quantity": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "default": 1,
+                    },
+                },
+                "required": ["client_id", "product_id"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "view_cart",
+            "description": (
+                "Показать корзину: позиции, сумма товаров, доставка 10%, итог."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "client_id": {
+                        "type": "string",
+                        "description": "Id клиента (дан системой).",
+                    },
+                },
+                "required": ["client_id"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "clear_cart",
+            "description": "Очистить корзину клиента.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "client_id": {
+                        "type": "string",
+                        "description": "Id клиента (дан системой).",
+                    },
+                },
+                "required": ["client_id"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "place_delivery_order",
+            "description": (
+                "Оформить доставку: сохранить заказ, показать доставку и итог, "
+                "очистить корзину."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "client_id": {
+                        "type": "string",
+                        "description": "Id клиента (дан системой).",
+                    },
+                },
+                "required": ["client_id"],
+                "additionalProperties": False,
+            },
+        },
+    },
 ]
 
 SYSTEM_PROMPT = (
     "Ты — вежливый русскоязычный ассистент магазина (каталог в БД).\n\n"
-    "У тебя есть инструменты: list_products, find_product, add_product, "
-    "calculate. Вызывай их, когда это нужно для фактов о товарах или "
-    "расчёта.\n\n"
+    "Инструменты: list_products, find_product, add_product, calculate, "
+    "add_to_cart, view_cart, clear_cart, place_delivery_order.\n"
+    "Доставка считается как 10% от суммы товаров в корзине; сумма и "
+    "стоимость доставки видны в view_cart и после place_delivery_order.\n\n"
     "Правила:\n"
     "- Отвечай структурировано: короткий заголовок, затем списки или "
     "таблично.\n"
@@ -115,6 +202,9 @@ SYSTEM_PROMPT = (
     "- Добавление товара: извлеки name, category, price из фразы; если "
     "чего-то не хватает — спроси. Пример: «яблоки 120 фрукты» → name=яблоки, "
     "price=120, category=фрукты.\n"
+    "- Корзина: сначала list_products/find_product, затем add_to_cart с "
+    "нужным product_id. Для просмотра и доставки используй view_cart и "
+    "place_delivery_order.\n"
 )
 
 
@@ -194,12 +284,23 @@ async def _run_tools_and_reply(
     )
 
 
-async def process_user_text(user_text: str) -> str:
+async def process_user_text(
+    user_text: str,
+    *,
+    cart_client_id: str | None = None,
+) -> str:
     """Один цикл диалога: модель + при необходимости MCP по HTTP."""
 
     client = AsyncOpenAI(api_key=settings.openai_api_key)
+    system = SYSTEM_PROMPT
+    if cart_client_id:
+        system += (
+            "\n\nОбязательно: для add_to_cart, view_cart, clear_cart и "
+            "place_delivery_order всегда передавай "
+            f'client_id="{cart_client_id}".'
+        )
     messages: list[dict[str, Any]] = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": system},
         {"role": "user", "content": user_text},
     ]
     return await _run_tools_and_reply(client, messages)
@@ -220,12 +321,12 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message is None:
         return
     await update.message.reply_text(
-        "Привет! Я помогу с каталогом: список, поиск, добавление товара "
-        "и расчёты.\n\n"
+        "Привет! Каталог, корзина и доставка (10% от суммы товаров).\n\n"
         "Примеры:\n"
         "• покажи все товары\n"
-        "• найди чай\n"
-        "• добавь товар яблоки категория фрукты цена 120\n"
+        "• добавь в корзину товар id 3, два штуки\n"
+        "• что в корзине\n"
+        "• оформи доставку\n"
         "• посчитай (19.5 + 2) * 3",
     )
 
@@ -246,7 +347,10 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         action="typing",
     )
     try:
-        answer = await process_user_text(raw)
+        answer = await process_user_text(
+            raw,
+            cart_client_id=str(update.effective_chat.id),
+        )
     except Exception:
         logger.exception("Ошибка обработки сообщения")
         answer = (

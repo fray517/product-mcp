@@ -21,6 +21,36 @@ def find_product(name: str) -> list[dict[str, int | str | float]]:
     return db_module.find_products_by_name(name)
 
 
+def add_to_cart(
+    client_id: str,
+    product_id: int,
+    quantity: int = 1,
+) -> dict[str, Any]:
+    """Кладёт товар в корзину клиента (количество суммируется)."""
+
+    return db_module.add_cart_item(client_id, product_id, quantity)
+
+
+def view_cart(client_id: str) -> dict[str, Any]:
+    """
+    Корзина: позиции, сумма товаров, стоимость доставки (10%), итог.
+    """
+
+    return db_module.get_cart_view(client_id)
+
+
+def clear_cart(client_id: str) -> dict[str, Any]:
+    """Очищает корзину клиента."""
+
+    return db_module.clear_cart(client_id)
+
+
+def place_delivery_order(client_id: str) -> dict[str, Any]:
+    """Оформляет доставку: заказ в БД, показана доставка 10%, корзина пуста."""
+
+    return db_module.place_delivery_order(client_id)
+
+
 def add_product(name: str, category: str, price: float) -> dict[str, Any]:
     """Добавляет товар; возвращает id и поля записи."""
 

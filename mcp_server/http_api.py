@@ -13,7 +13,16 @@ from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
 import db as db_module
-from tools import add_product, calculate, find_product, list_products
+from tools import (
+    add_product,
+    add_to_cart,
+    calculate,
+    clear_cart,
+    find_product,
+    list_products,
+    place_delivery_order,
+    view_cart,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +72,16 @@ class CalculateBody(BaseModel):
     expression: str = Field(..., min_length=1)
 
 
+class ClientIdBody(BaseModel):
+    client_id: str = Field(..., min_length=1)
+
+
+class AddToCartBody(BaseModel):
+    client_id: str = Field(..., min_length=1)
+    product_id: int = Field(..., ge=1)
+    quantity: int = Field(default=1, ge=1)
+
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -86,6 +105,26 @@ async def http_add_product(body: AddProductBody) -> dict[str, Any]:
 @app.post("/api/tools/calculate")
 async def http_calculate(body: CalculateBody) -> dict[str, Any]:
     return calculate(body.expression)
+
+
+@app.post("/api/tools/add_to_cart")
+async def http_add_to_cart(body: AddToCartBody) -> dict[str, Any]:
+    return add_to_cart(body.client_id, body.product_id, body.quantity)
+
+
+@app.post("/api/tools/view_cart")
+async def http_view_cart(body: ClientIdBody) -> dict[str, Any]:
+    return view_cart(body.client_id)
+
+
+@app.post("/api/tools/clear_cart")
+async def http_clear_cart(body: ClientIdBody) -> dict[str, Any]:
+    return clear_cart(body.client_id)
+
+
+@app.post("/api/tools/place_delivery_order")
+async def http_place_delivery_order(body: ClientIdBody) -> dict[str, Any]:
+    return place_delivery_order(body.client_id)
 
 
 def main() -> None:
